@@ -1,0 +1,487 @@
+#IR 1
+# IR Practical 1 : Write a program for pre-processing of a text document such as stop word removal, stemming.
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import PorterStemmer,WordNetLemmatizer
+
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('punkt_tab')
+nltk.download('wordnet')
+
+text_document = "Text preprocessing is an essential step in natural language processing."
+
+words = word_tokenize(text_document)
+print(words)
+
+stop_words = set(stopwords.words('english'))
+filtered_words = [word for word in words if word.lower() not in stop_words]
+
+stemmer = PorterStemmer()
+stemmed_words = [stemmer.stem(word) for word in filtered_words]
+
+lemmatizer = WordNetLemmatizer()
+lemmatized_words = [lemmatizer.lemmatize(word) for word in filtered_words]
+
+print("Filtered Words:", filtered_words)
+print("Stemmed Words:", stemmed_words)
+print("Lemmatized Words:", lemmatized_words)
+
+
+
+#IR2
+from collections import defaultdict
+import re
+
+# Sample documents
+documents = {
+    1: "The quick brown fox jumps over the lazy dog.",
+    2: "Never jump over the lazy dog quickly.",
+    3: "A fast-moving fox is better than a slow dog."
+}
+
+# Build the inverted index
+index = defaultdict(set)
+for doc_id, text in documents.items():
+    for word in re.findall(r'\w+', text.lower()):
+        index[word].add(doc_id)
+
+# Search for query in the inverted index
+query = input("Enter search query: ")
+words = query.lower().split()
+result = set.intersection(*(index.get(word, set()) for word in words))
+
+# Print matching documents
+print("Matching documents:", sorted(result) if result else "No match found")
+
+
+
+#IR3
+import pandas as pd
+from pgmpy.models import BayesianNetwork
+from pgmpy.estimators import BayesianEstimator
+from pgmpy.inference import VariableElimination
+
+data = pd.read_csv("heart_cleveland_upload.csv")
+
+model = BayesianNetwork([
+    ('age', 'condition'),
+    ('sex', 'condition'),
+    ('cp', 'condition'),
+    ('trestbps', 'condition'),
+    ('chol', 'condition')
+])
+
+model.fit(data, estimator=BayesianEstimator)
+HeartDisease_infer = VariableElimination(model)
+
+q1 = HeartDisease_infer.query(variables=['condition'], evidence={'cp': 0})
+print("CP",q1)
+
+q2 = HeartDisease_infer.query(variables=['condition'], evidence={'trestbps': 160})
+print("TRESTBPS",q2)
+
+q3 = HeartDisease_infer.query(variables=['condition'], evidence={'age': 69})
+print("AGE",q3)
+
+q4 = HeartDisease_infer.query(variables=['condition'], evidence={'chol': 243})
+print("CHOL",q4)
+
+
+
+#IR4
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from warnings import filterwarnings
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+
+df = pd.read_csv("email_spam.csv")
+df.head()
+
+df1 = df
+df1.duplicated().sum()
+
+df2 = df1.drop_duplicates()
+df2.duplicated().sum()
+
+from sklearn.preprocessing import LabelEncoder
+
+le = LabelEncoder()
+df2['spam'] = df2["type"]
+df2['spam'] = le.fit_transform(df2['spam'])
+df2.head()
+
+df2["text"] = df2["text"].replace("\n","", regex=True)
+df2.head()
+x_train, x_test, y_train, y_test = train_test_split(df2['text'], df2['spam'], test_size = 0.1)
+
+v = CountVectorizer()
+x_train_count = v.fit_transform(x_train.values)
+x_test_count = v.transform(x_test)
+x_train_count.toarray()
+model = LogisticRegression()
+model.fit(x_train_count, y_train)
+
+model.score(x_test_count, y_test)
+
+email = ['take any one from dataset ']
+
+new_email = v.transform(email)
+ans = model.predict(new_email)
+if ans[0] == 1:
+    print("Spam")
+else:
+    print("Not Spam")
+
+
+
+#IR5
+# IR Practical : 5 Implement Agglomerative hierarchical clustering algorithm using appropriate dataset.
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.preprocessing import StandardScaler
+from scipy.cluster.hierarchy import dendrogram, linkage
+from sklearn.decomposition import PCA
+
+iris = load_iris()
+X = iris.data
+y = iris.target
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+n_clusters = 3
+agg_clustering = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward')
+cluster_labels = agg_clustering.fit_predict(X_pca)
+
+linked = linkage(X_pca, 'ward')
+plt.figure(figsize=(12, 6))
+dendrogram(linked, orientation='top', distance_sort='descending', show_leaf_counts=2)
+plt.title('Dendrogram')
+plt.xlabel('Cluster Size')
+plt.ylabel('Distance')
+plt.show()
+
+print("Cluster Labels:")
+print(cluster_labels)
+
+
+
+
+#BI1
+#Read the DNA sequence from file
+with open('dna_sequence.txt', 'r') as file:
+    dna_sequence = file.read().strip()
+
+dna_sequence
+
+# 1. Function to calculate GC content
+def calculate_gc_content(sequence):
+    g_count = sequence.count('G')
+    c_count = sequence.count('C')
+    gc_content = (g_count + c_count) / len(sequence) * 100
+    return round(gc_content,2)
+
+# 2. Function to find motifs in the DNA sequence
+def find_motifs(sequence, motif):
+    positions = []
+    for i in range(len(sequence) - len(motif) + 1):
+        if sequence[i:i + len(motif)] == motif:
+            positions.append(i)
+    return positions
+
+# 3. Function to identify coding regions (start and stop codons)
+def find_coding_regions(sequence):
+    start_codon = "ATG"
+    stop_codons = ["TAA", "TAG", "TGA"]
+    coding_regions = []
+
+    i = 0
+    while i < len(sequence) - 2:
+        codon = sequence[i:i + 3]
+        if codon == start_codon:
+            # Find the next stop codon after the start codon
+            for j in range(i + 3, len(sequence) - 2, 3):
+                stop_codon = sequence[j:j + 3]
+                if stop_codon in stop_codons:
+                    coding_regions.append((i, j + 3))  # coding region from start to the end of stop codon
+                    i = j + 3
+                    break
+        i += 3
+
+    return coding_regions
+
+# Calculate results
+gc_content = calculate_gc_content(dna_sequence)
+motif_positions = find_motifs(dna_sequence, "ATG")
+coding_regions = find_coding_regions(dna_sequence)
+
+
+
+print(f"GC content : {gc_content}%")
+
+print(f"Motif ATG found at positions : {motif_positions}")
+
+if coding_regions:
+    print("Coding regions : ")
+    for start, end in coding_regions:
+        print(f"Start: {start}, End: {end}")
+        print(f"Sequence : {dna_sequence[start:end]}")
+else:
+    print("No coding regions found in the sequence.")
+
+
+
+
+#BI2
+import numpy as np
+import pandas as pd
+
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+
+import seaborn as sns
+
+# Step 1: Simulate RNA-Seq Dataset
+np.random.seed(42)
+
+genes = [f'gene_{i}' for i in range(1, 101)]
+conditions = ['Control', 'Treatment']
+
+samples = [f'sample_{i}' for i in range(1, 11)]
+data = np.random.poisson(lam=20, size=(100, 10))
+
+# Simulate differential expression for some genes in Treatment condition
+data[0:5, 5:10] += 15
+
+# Create DataFrame
+df = pd.DataFrame(data, index=genes, columns=samples)
+
+metadata = pd.DataFrame({'sample': samples,
+                          'condition': ['Control']*5 + ['Treatment']*5})
+
+# Step 2: Normalize the Data
+df_norm = df.div(df.sum(axis=0), axis=1) * 10**6
+df_log = np.log2(df_norm + 1)
+
+def differential_expression(df, metadata):
+    results = []
+    for gene in df.index:
+        y = df_log.loc[gene].values
+        X = pd.get_dummies(metadata['condition'], drop_first=True)
+        # The line below was modified to cast the DataFrame to float
+        X = sm.add_constant(X.astype(float))
+        model = sm.OLS(y, X).fit()
+        p_value = model.pvalues[1]
+        results.append({'gene': gene, 'p_value': p_value})
+
+    results_df = pd.DataFrame(results)
+    results_df['adjusted_p_value'] = sm.stats.multipletests(results_df['p_value'], method='fdr_bh')[1]
+
+    return results_df
+
+# Call the differential_expression function to calculate results_df
+results_df = differential_expression(df_log, metadata)  # This line was added to call the function
+
+# Filter differentially expressed genes
+deg = results_df[results_df['adjusted_p_value'] < 0.05]
+
+# Step 4: Functional Annotation (Simulated Annotations)
+annotations = {
+    'gene_1': 'Pathway A',
+    'gene_2': 'Pathway B',
+    'gene_3': 'Pathway C',
+    'gene_4': 'Pathway D',
+    'gene_5': 'Pathway E',
+}
+deg['annotation'] = deg['gene'].map(annotations).fillna('Unknown')
+
+# Step 5: Biological Interpretation (Plotting)
+plt.figure(figsize=(10, 6))
+
+sns.scatterplot(x='gene', y='adjusted_p_value', hue='annotation', data=deg)
+plt.axhline(y=0.05, color='r', linestyle='--')
+
+plt.xlabel('Genes')
+plt.ylabel('Adjusted P-Value')
+
+plt.title('Differentially Expressed Genes')
+plt.xticks(rotation=90)
+
+plt.legend(title='Annotations')
+plt.tight_layout()
+
+plt.show()
+
+# Save results to a CSV file
+deg.to_csv('differentially_expressed_genes.csv', index=False)
+
+# Generate the Report
+report = f"""
+RNA-Seq Data Analysis Report
+
+Differentially Expressed Genes
+
+{deg[['gene', 'adjusted_p_value']]}
+
+Functional Annotations
+
+{deg[['gene', 'annotation']]}
+
+Potential Biological Interpretations
+
+The genes gene_1, gene_2, etc., are involved in pathways A, B, etc.
+These pathways are important for understanding the effect of the treatment condition.
+"""
+
+# Save the report to a text file
+with open('RNASeq_Analysis_Report.txt', 'w') as f:
+    f.write(report)
+
+print("Analysis complete. Results saved to 'differentially_expressed_genes.csv' and 'RNASeq_Analysis_Report.txt'.")
+
+
+
+#BI3
+import torch
+import sidechainnet as scn
+import random
+import os
+import numpy as np
+from visualize import build_visualizable_structures, plot_protein
+from model import ProteinNet
+from trainer import train
+from config import get_parameters
+
+seed = 0
+random.seed(seed)
+os.environ['PYTHONHASHSEED'] = str(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.backends.cudnn.deterministic = True
+
+# To train with a GPU, go to Runtime > Change runtime type
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
+print(f"Using {device} for training.")
+def main(config, dataloader):
+    print("Available Dataloaders =", list(dataloader.keys()))
+
+    # Create the model and move it to the GPU
+    model = ProteinNet(d_hidden=config.d_hidden,
+                            dim=config.dim,
+                            d_in=config.d_in,
+                            d_embedding=config.d_embedding,
+                            heads = config.n_heads,
+                            dim_head = config.head_dim,
+                            integer_sequence=config.integer_sequence)
+    model = model.to(device)
+
+    trained_model = train(model, config, dataloader, device)
+    if os.path.exists(config.model_save_path)==False:
+        os.mkdir(config.model_save_path)
+    torch.save(trained_model.state_dict(), '{}/model_weights.pth'.format(config.model_save_path))
+
+def plot(idx, dataloader, config):
+    model =  ProteinNet(d_hidden=config.d_hidden,
+                        dim=config.dim,
+                        d_in=config.d_in,
+                        d_embedding=config.d_embedding,
+                        heads = config.n_heads,
+                        dim_head = config.head_dim,
+                        integer_sequence=config.integer_sequence)
+    model = model.to(device)
+    model.load_state_dict(torch.load('{}/model_weights.pth'.format(config.model_save_path)))
+
+    if os.path.exists('./plots')==False:
+        os.mkdir('./plots')
+    s_pred, s_true = build_visualizable_structures(model, dataloader['train'], config, device)
+    s_pred.to_pdb(idx,path='./plots/{}_pred.pdb'.format(idx))
+    s_true.to_pdb(idx,path='./plots/{}_true.pdb'.format(idx))
+    plot_protein('./plots/{}_pred.pdb'.format(idx), './plots/{}_true.pdb'.format(idx))
+
+if __name__ == '__main__':
+    config = get_parameters()
+    print("Model Configuration: ")
+    print(config)
+    # Load the data in the appropriate format for training.
+    dataloader = scn.load(
+                with_pytorch="dataloaders",
+                batch_size=config.batch,
+                dynamic_batching=False)
+    if config.train:
+        main(config, dataloader)
+    else:
+        plot(config.idx, dataloader, config)
+
+
+
+#BI4
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+
+df = pd.read_csv('polymerase_cluster-BI.csv')
+df.head()
+
+df.describe()
+
+df.info()
+
+df.isna().sum()
+
+df.columns
+
+X = df[['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+       '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22',
+       '23', '24', '25', '26', '27', '28', '29']]
+y = df[['G1', 'G2', 'G3', 'G4', 'G5',
+       'G6', 'G7', 'G8', 'G9', 'G10']]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+model = RandomForestClassifier()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy of the model : {accuracy * 100}%")
+
+# Accuracy Score
+plt.figure(figsize=(4, 4))
+plt.bar(['Accuracy'], [accuracy * 100], color='skyblue')
+plt.ylim(0, 100)
+plt.title('Model Accuracy')
+plt.ylabel('Accuracy (%)')
+plt.show()
+
+class_report = classification_report(y_test, y_pred)
+print("Classification Report :")
+print(class_report)
+
+# Confusion Matrix
+from sklearn.metrics import ConfusionMatrixDisplay
+
+# Create confusion matrix
+cm = confusion_matrix(y_test.values.argmax(axis=1), y_pred.argmax(axis=1))
+
+# Visualize confusion matrix
+plt.figure(figsize=(10, 8))
+ConfusionMatrixDisplay(confusion_matrix=cm).plot(cmap=plt.cm.Blues)
+plt.title('Confusion Matrix')
+plt.show()
